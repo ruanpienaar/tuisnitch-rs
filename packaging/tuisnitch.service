@@ -1,0 +1,33 @@
+[Unit]
+Description=tuisnitch application firewall (web UI on 127.0.0.1:8484)
+After=network.target
+
+[Service]
+Type=simple
+# Change the mode, timeout or port here, or override with: sudo systemctl edit tuisnitch
+ExecStart=/usr/local/bin/tuisnitch -ui web -listen 127.0.0.1:8484 -mode alert -timeout 60s
+# tuisnitch removes its nft table and releases held packets on SIGTERM.
+KillSignal=SIGTERM
+TimeoutStopSec=15
+Restart=on-failure
+RestartSec=2
+
+# Needs root: NFQUEUE and nftables need CAP_NET_ADMIN, and mapping sockets to
+# processes means reading every process's /proc/<pid>/fd.
+# Rules and the web token live in /etc/tuisnitch, so /etc stays writable.
+NoNewPrivileges=yes
+ProtectSystem=yes
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

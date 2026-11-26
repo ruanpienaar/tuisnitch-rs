@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tuisnitch</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%235f3dc4'/%3E%3Cpath d='M4 8h8M8 4v8' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f6f6f8; --panel: #ffffff; --line: #e2e2e8; --text: #1b1b22; --dim: #6b6b78;
+  --accent: #5f3dc4; --allow: #1f9d55; --deny: #d03838; --pend: #d98a00; --new: #0b8fb3;
+  --row-hover: #f0eff6; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111116; --panel: #1a1a22; --line: #2c2c38; --text: #e8e8ef; --dim: #8d8d9c;
+    --accent: #9b7dff; --allow: #3ecf7c; --deny: #ff5c5c; --pend: #ffb020; --new: #33d6ff;
+    --row-hover: #22222c; --shadow: 0 1px 2px rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.mono, td, .kv dd { font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; font-size: 13px; }
+button { font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--line);
+  background: var(--panel); border-radius: 7px; padding: 6px 12px; }
+button:hover { border-color: var(--dim); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+select, input[type=text], input[type=password] { font: inherit; color: inherit; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; }
+
+header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 16px; }
+.brand { font-weight: 700; letter-spacing: .2px; display: flex; align-items: center; gap: 8px; }
+.brand .logo { background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 8px; }
+.tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--dim); }
+.modes { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.modes button { border: 0; border-radius: 0; padding: 6px 14px; background: transparent; color: var(--dim); font-weight: 600; }
+.modes button + button { border-left: 1px solid var(--line); }
+.modes button.on[data-mode=alert] { background: var(--pend); color: #000; }
+.modes button.on[data-mode=allow] { background: var(--allow); color: #000; }
+.modes button.on[data-mode=block] { background: var(--deny); color: #fff; }
+.stats { color: var(--dim); display: flex; gap: 14px; flex-wrap: wrap; }
+.stats b { color: var(--text); font-weight: 600; }
+.spacer { flex: 1; }
+.conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); display: inline-block; }
+.conn-dot.ok { background: var(--allow); }
+.conn-dot.bad { background: var(--deny); }
+
+main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+.banner { border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; border: 1px solid; }
+.banner.err { border-color: var(--deny); color: var(--deny); }
+.banner.info { border-color: var(--line); color: var(--dim); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.prompts { display: grid; gap: 12px; margin-bottom: 16px; }
+.prompt { background: var(--panel); border: 2px solid var(--pend); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); }
+.prompt h2 { margin: 0 0 8px; font-size: 15px; color: var(--pend); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.prompt h2 .left { color: var(--dim); font-weight: 400; font-size: 13px; }
+.bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.bar > div { height: 100%; background: var(--pend); transition: width .25s linear; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin: 0 0 12px; }
+.kv dt { color: var(--dim); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.kv .dest { color: var(--new); font-weight: 700; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.actions .allow { border-color: var(--allow); color: var(--allow); }
+.actions .deny { border-color: var(--deny); color: var(--deny); }
+.actions .allow.solid { background: var(--allow); color: #000; }
+.actions .deny.solid { background: var(--deny); color: #fff; }
+.solid kbd { color: inherit; border-color: currentColor; opacity: .75; }
+.bell { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
+kbd { font-family: ui-monospace, monospace; font-size: 11px; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; color: var(--dim); }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+.tabs { display: flex; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; align-items: end; }
+.tabs .tab { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 8px 12px; color: var(--dim); font-weight: 600; }
+.tabs .tab.on { color: var(--text); border-bottom-color: var(--accent); }
+.tabs .tools { margin-left: auto; display: flex; gap: 10px; align-items: center; padding-bottom: 6px; flex-wrap: wrap; }
+label.chk { display: inline-flex; gap: 6px; align-items: center; color: var(--dim); cursor: pointer; }
+.scroll { overflow-x: auto; max-height: calc(100vh - 220px); overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { position: sticky; top: 0; background: var(--panel); text-align: left; color: var(--dim); font-weight: 600; font-size: 12px;
+  text-transform: uppercase; letter-spacing: .4px; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:hover td { background: var(--row-hover); }
+td.num { text-align: right; }
+.v-allowed { color: var(--allow); } .v-denied { color: var(--deny); } .v-pending { color: var(--pend); }
+.star { color: var(--new); font-weight: 700; }
+.ip { color: var(--dim); }
+.empty { padding: 24px; text-align: center; color: var(--dim); }
+td .mini { padding: 2px 8px; font-size: 12px; }
+.in-note { margin: 0; padding: 8px 10px; color: var(--dim); font-size: 13px; border-bottom: 1px solid var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; white-space: normal; min-width: 220px; }
+.chip { border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 12px; }
+.chip.blocked { border-color: var(--deny); color: var(--deny); }
+.chip.passed { border-color: var(--allow); color: var(--allow); }
+.chip.mixed { border-color: var(--pend); color: var(--pend); }
+
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 20; padding: 16px; }
+.overlay .box { background: var(--panel); border-radius: 12px; padding: 22px; width: min(460px, 100%); box-shadow: var(--shadow); }
+.overlay h3 { margin: 0 0 6px; }
+.overlay p { color: var(--dim); margin: 0 0 14px; }
+.overlay code { background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+.overlay form { display: flex; gap: 8px; }
+.overlay input { flex: 1; min-width: 0; }
+.hidden { display: none !important; }
+
+@media (max-width: 640px) {
+  header { padding: 10px 16px; }
+  .stats { font-size: 13px; gap: 10px; }
+  .kv { grid-template-columns: 1fr; }
+  .kv dt { margin-top: 4px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">tuisnitch</span><span id="demo" class="tag hidden">DEMO</span></div>
+  <div class="modes" role="group" aria-label="Mode">
+    <button data-mode="alert" title="Ask about unknown connections (1)">1 Alert</button>
+    <button data-mode="allow" title="Allow and log everything (2)">2 Allow</button>
+    <button data-mode="block" title="Block every new connection (3)">3 Block</button>
+  </div>
+  <div class="stats">
+    <span>allowed <b id="s-allowed">0</b></span>
+    <span>denied <b id="s-denied">0</b></span>
+    <span>pending <b id="s-pending">0</b></span>
+    <span>rules <b id="s-rules">0</b></span>
+    <span title="Incoming connection attempts (blocked by the host firewall)">inbound <b id="s-inbound">0</b> (<b id="s-inblocked">0</b> blocked)</span>
+  </div>
+  <div class="spacer"></div>
+  <button id="alerts-btn" title="Desktop notifications and sound"><svg class="bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Alerts</button>
+  <span title="Live connection to tuisnitch"><span id="dot" class="conn-dot"></span></span>
+</header>
+
+<main>
+  <div id="err" class="banner err hidden"></div>
+  <div id="notif-hint" class="banner info hidden">
+    <span>Turn on desktop notifications so new connections alert you even when this tab is in the background.</span>
+    <button id="notif-enable">Enable notifications</button>
+  </div>
+  <div id="alert-settings" class="banner info hidden">
+    <label class="chk"><input type="checkbox" id="opt-notify"> Notify on connection prompts</label>
+    <label class="chk"><input type="checkbox" id="opt-new"> Notify on first-seen destinations (any mode)</label>
+    <label class="chk"><input type="checkbox" id="opt-sound"> Sound</label>
+    <button id="test-alert">Test</button>
+  </div>
+
+  <section id="prompts" class="prompts" aria-live="polite"></section>
+
+  <div class="card">
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-tab="conns" role="tab">Connections</button>
+      <button class="tab" data-tab="incoming" role="tab">Incoming <span id="in-count" class="ip"></span></button>
+      <button class="tab" data-tab="rules" role="tab">Rules</button>
+      <div class="tools" id="conn-tools">
+        <input type="text" id="filter" placeholder="Filter program / host / IP / port" aria-label="Filter">
+        <label class="chk" id="only-new-label"><input type="checkbox" id="only-new"> only new ★</label>
+      </div>
+    </div>
+    <div class="scroll" id="conns">
+      <table>
+        <thead><tr><th>Time</th><th>Verdict</th><th></th><th>Program</th><th class="num">PID</th><th>Proto</th><th>Destination</th><th class="num">Port</th><th>Reason</th></tr></thead>
+        <tbody id="conn-body"></tbody>
+      </table>
+      <div id="conn-empty" class="empty">No connections yet.</div>
+    </div>
+    <div class="scroll hidden" id="incoming">
+      <p class="in-note">Who has tried to connect <em>to</em> this machine. Watch only: your host firewall (e.g. ufw) decides; <span class="v-denied">blocked</span> means it dropped the attempt.</p>
+      <table>
+        <thead><tr><th>Last seen</th><th>Remote</th><th class="num">Tries</th><th class="num">Blocked</th><th class="num">Passed</th><th>Ports tried</th><th>To</th><th>First seen</th></tr></thead>
+        <tbody id="in-body"></tbody>
+      </table>
+      <div id="in-empty" class="empty">Nothing has tried to connect to this machine yet.</div>
+    </div>
+    <div class="scroll hidden" id="rules">
+      <table>
+        <thead><tr><th>Action</th><th>Program</th><th>Host</th><th class="num">Port</th><th>Proto</th><th>Created</th><th></th></tr></thead>
+        <tbody id="rule-body"></tbody>
+      </table>
+      <div id="rule-empty" class="empty">No rules yet: answer a prompt with “always” to create one.</div>
+    </div>
+  </div>
+</main>
+
+<div id="login" class="overlay hidden">
+  <div class="box">
+    <h3>Access token needed</h3>
+    <p>Get it on the machine running tuisnitch with <code>sudo cat /etc/tuisnitch/web-token</code>
+      (or from the URL it printed at startup).</p>
+    <form id="login-form">
+      <input type="password" id="token" placeholder="token" autocomplete="current-password" aria-label="Token">
+      <button type="submit">Unlock</button>
+    </form>
+    <p id="login-err" class="v-denied hidden" style="margin:10px 0 0">Wrong token.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("tuisnitch." + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("tuisnitch." + k, JSON.stringify(v)); } catch {} },
+};
+const opts = { notify: store.get("notify", true), newDest: store.get("newDest", false), sound: store.get("sound", true) };
+let state = null, tab = "conns", es = null, stateAt = 0;
+const scopes = {};              // prompt id -> scope
+const alerted = new Set();      // prompt ids we've alerted about
+const totals = {};              // prompt id -> full countdown in ms (first ms_left seen)
+let maxConnId = null;           // newest conn id seen (for first-seen alerts)
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+
+async function api(method, path, body) {
+  const r = await fetch("/api" + path, {
+    method, credentials: "same-origin",
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (r.status === 401) { showLogin(); throw new Error("unauthorized"); }
+  if (!r.ok) throw new Error(await r.text());
+}
+
+// ---- live updates --------------------------------------------------------
+function connect() {
+  if (es) es.close();
+  es = new EventSource("/api/events");
+  es.addEventListener("state", (e) => {
+    $("dot").className = "conn-dot ok";
+    state = JSON.parse(e.data); stateAt = performance.now();
+    alertOnChanges(); render();
+  });
+  es.onerror = async () => {
+    $("dot").className = "conn-dot bad";
+    // EventSource can't see status codes; check whether we're logged out.
+    try { const r = await fetch("/api/state", { credentials: "same-origin" }); if (r.status === 401) { es.close(); showLogin(); } } catch {}
+  };
+}
+
+// ---- alerts --------------------------------------------------------------
+let audio = null;
+function beep() {
+  if (!opts.sound || !audio) return; // created on the first click (autoplay policy)
+  try {
+    if (audio.state === "suspended") audio.resume();
+    const t = audio.currentTime;
+    for (const [f, d] of [[880, 0], [1175, .12]]) {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = f; o.connect(g); g.connect(audio.destination);
+      g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.15, t + d + .02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d + .11);
+      o.start(t + d); o.stop(t + d + .12);
+    }
+  } catch {}
+}
+function notify(title, body, tag, sticky) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification(title, { body, tag, requireInteraction: sticky, icon: document.querySelector("link[rel=icon]").href });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch {}
+}
+const progName = (c) => c.name || c.exe.split("/").pop() || c.exe;
+const dest = (c) => c.host || c.dst;
+
+function alertOnChanges() {
+  let sound = false;
+  for (const p of state.pending) {
+    if (alerted.has(p.id)) continue;
+    alerted.add(p.id);
+    if (opts.notify) {
+      const c = p.conn;
+      notify("New connection: " + progName(c), `${dest(c)}  ${c.proto}/${c.dport}\n${c.exe}`, "prompt-" + p.id, true);
+      sound = true;
+    }
+  }
+  const live = new Set(state.pending.map((p) => p.id));
+  for (const id of alerted) if (!live.has(id)) { alerted.delete(id); delete totals[id]; delete scopes[id]; }
+
+  const newest = state.log.length ? state.log[0].id : 0;
+  if (maxConnId !== null && opts.newDest) {
+    const fresh = state.log.filter((c) => c.id > maxConnId && c.is_new && c.verdict !== "pending");
+    for (const c of fresh.slice(0, 3)) notify("★ " + progName(c) + " → " + dest(c), `${c.proto}/${c.dport} · ${c.verdict} (${c.reason})`, "new-" + c.id, false);
+    if (fresh.length) sound = true;
+  }
+  if (maxConnId === null || newest > maxConnId) maxConnId = newest;
+  if (sound) beep();
+  const n = state.pending.length;
+  document.title = n ? `(${n}) tuisnitch – connection waiting` : "tuisnitch";
+}
+
+// ---- rendering -----------------------------------------------------------
+function render() {
+  const s = state;
+  $("demo").classList.toggle("hidden", !s.demo);
+  for (const b of document.querySelectorAll(".modes button")) b.classList.toggle("on", b.dataset.mode === s.mode);
+  $("s-allowed").textContent = s.allowed; $("s-denied").textContent = s.denied;
+  $("s-pending").textContent = s.pending.length; $("s-rules").textContent = s.rules.length;
+  $("s-inbound").textContent = s.in_attempts; $("s-inblocked").textContent = s.in_blocked;
+  $("in-count").textContent = s.inbound.length ? `(${s.inbound.length})` : "";
+  $("err").classList.toggle("hidden", !s.err); $("err").textContent = s.err ? "error: " + s.err : "";
+  renderPrompts(); renderConns(); renderIncoming(); renderRules();
+}
+
+const scopeLabels = { hostport: "this host + port", host: "this host, any port", app: "any host (whole program)" };
+
+function renderPrompts() {
+  const box = $("prompts");
+  const focused = document.activeElement && box.contains(document.activeElement) ? document.activeElement.dataset.key : null;
+  box.replaceChildren();
+  state.pending.forEach((p, i) => {
+    const c = p.conn, sc = scopes[p.id] || "hostport";
+    const go = (allow, forever) => answer(p.id, allow, forever);
+    const sel = el("select", { "aria-label": "Rule scope", "data-key": "scope-" + p.id, onchange: (e) => { scopes[p.id] = e.target.value; } },
+      ...Object.entries(scopeLabels).map(([v, l]) => { const o = el("option", { value: v }, l); if (v === sc) o.selected = true; return o; }));
+    const hint = (k) => i === 0 ? el("kbd", null, k) : null;
+    const extra = [p.extra ? `+${p.extra} retries held` : null].filter(Boolean).join(" · ");
+    const kv = el("dl", { class: "kv" },
+      el("dt", null, "Program"), el("dd", null, c.exe, el("span", { class: "ip" }, `  pid ${c.pid ?? "?"} · uid ${c.uid ?? "?"}`)),
+      c.cmd && c.cmd !== c.exe ? el("dt", null, "Command") : null, c.cmd && c.cmd !== c.exe ? el("dd", { class: "ip" }, c.cmd) : null,
+      el("dt", null, "Connect"), el("dd", null, el("span", { class: "dest" }, dest(c)), c.host ? el("span", { class: "ip" }, "  " + c.dst) : null, `  ${c.proto}/${c.dport}`),
+    );
+    box.append(el("article", { class: "prompt", "data-id": p.id },
+      el("h2", null, "⚠ New outbound connection: " + progName(c), el("span", { class: "left", "data-left": p.id }), extra ? el("span", { class: "left" }, extra) : null),
+      el("div", { class: "bar" }, el("div", { "data-bar": p.id })),
+      kv,
+      el("div", { class: "actions" },
+        el("button", { class: "allow", "data-key": "ao-" + p.id, onclick: () => go(true, false) }, "Allow once ", hint("a")),
+        el("button", { class: "allow solid", "data-key": "aa-" + p.id, onclick: () => go(true, true) }, "Allow always ", hint("A")),
+        el("button", { class: "deny", "data-key": "do-" + p.id, onclick: () => go(false, false) }, "Deny once ", hint("d")),
+        el("button", { class: "deny solid", "data-key": "da-" + p.id, onclick: () => go(false, true) }, "Deny always ", hint("D")),
+        el("span", { class: "ip" }, "“always” applies to"), sel,
+      ),
+    ));
+  });
+  if (focused) { const f = box.querySelector(`[data-key="${focused}"]`); if (f) f.focus(); }
+  tickCountdowns();
+}
+
+function tickCountdowns() {
+  if (!state) return;
+  const since = performance.now() - stateAt;
+  for (const p of state.pending) {
+    const left = Math.max(0, p.ms_left - since);
+    const t = document.querySelector(`[data-left="${p.id}"]`), b = document.querySelector(`[data-bar="${p.id}"]`);
+    if (t) t.textContent = `auto-deny in ${Math.ceil(left / 1000)}s`;
+    const total = (totals[p.id] ??= Math.max(p.ms_left, 1));
+    if (b) b.style.width = (100 * left / total).toFixed(1) + "%";
+  }
+}
+setInterval(tickCountdowns, 250);
+
+async function answer(id, allow, forever) {
+  try { await api("POST", `/prompts/${id}`, { allow, forever, scope: scopes[id] || "hostport" }); delete scopes[id]; }
+  catch (e) { if (e.message !== "unauthorized") console.warn(e); }
+}
+
+function fmtTime(iso) { const d = new Date(iso); return d.toLocaleTimeString([], { hour12: false }); }
+
+function renderConns() {
+  const q = $("filter").value.trim().toLowerCase(), onlyNew = $("only-new").checked;
+  const rows = state.log.filter((c) => (!onlyNew || c.is_new) &&
+    (!q || [c.name, c.exe, c.host || "", c.dst, String(c.dport)].some((f) => f.toLowerCase().includes(q))));
+  $("conn-empty").classList.toggle("hidden", rows.length > 0);
+  $("conn-body").replaceChildren(...rows.map((c) => el("tr", { title: c.cmd || c.exe },
+    el("td", null, fmtTime(c.time)),
+    el("td", { class: "v-" + c.verdict }, c.verdict),
+    el("td", { class: "star" }, c.is_new ? "★" : ""),
+    el("td", null, progName(c)),
+    el("td", { class: "num" }, c.pid ?? ""),
+    el("td", null, c.proto),
+    el("td", null, c.host ? c.host + " " : "", el("span", { class: c.host ? "ip" : "" }, c.dst)),
+    el("td", { class: "num" }, c.dport),
+    el("td", { class: "ip" }, c.reason),
+  )));
+}
+
+function chipClass(x) { return x.blocked && x.passed ? "mixed" : x.blocked ? "blocked" : x.passed ? "passed" : ""; }
+
+function renderIncoming() {
+  const q = $("filter").value.trim().toLowerCase();
+  const rows = state.inbound.filter((s) => !q ||
+    [s.src, s.host || "", s.local, ...s.ports.map((p) => `${p.proto}/${p.port} ${p.listener || ""}`)].some((f) => f.toLowerCase().includes(q)));
+  $("in-empty").classList.toggle("hidden", rows.length > 0);
+  $("in-body").replaceChildren(...rows.map((s) => el("tr", null,
+    el("td", null, fmtTime(s.last)),
+    el("td", { class: "v-" + ({ blocked: "denied", passed: "allowed", mixed: "pending" }[chipClass(s)] || "pending") },
+      s.host ? s.host + " " : "", el("span", { class: s.host ? "ip" : "" }, s.src)),
+    el("td", { class: "num" }, s.attempts),
+    el("td", { class: "num" + (s.blocked ? " v-denied" : " ip") }, s.blocked),
+    el("td", { class: "num" + (s.passed ? " v-allowed" : " ip") }, s.passed),
+    el("td", null, el("div", { class: "chips" },
+      ...s.ports.map((p) => el("span", {
+        class: "chip " + chipClass(p),
+        title: `${p.attempts} tries · ${p.blocked} blocked · ${p.passed} passed` + (p.listener ? ` · listening: ${p.listener}` : " · nothing listening"),
+      }, `${p.proto}/${p.port}`, p.listener ? " " + p.listener : "", p.attempts > 1 ? ` ×${p.attempts}` : "")),
+      s.more_ports ? el("span", { class: "chip" }, `+${s.more_ports} more`) : null)),
+    el("td", { class: "ip" }, s.local),
+    el("td", { class: "ip" }, new Date(s.first).toLocaleString([], { hour12: false })),
+  )));
+}
+
+function renderRules() {
+  $("rule-empty").classList.toggle("hidden", state.rules.length > 0);
+  $("rule-body").replaceChildren(...state.rules.map((r, i) => el("tr", null,
+    el("td", { class: r.allow ? "v-allowed" : "v-denied" }, r.allow ? "allow" : "deny"),
+    el("td", null, r.exe),
+    el("td", null, r.host),
+    el("td", { class: "num" }, r.port || "any"),
+    el("td", null, r.proto || "any"),
+    el("td", { class: "ip" }, r.created ? new Date(r.created).toLocaleString([], { hour12: false }) : ""),
+    el("td", null,
+      el("button", { class: "mini", onclick: () => api("POST", `/rules/${i}/toggle`).catch(() => {}) }, r.allow ? "→ deny" : "→ allow"), " ",
+      el("button", { class: "mini", onclick: () => { if (confirm(`Delete rule for ${r.exe} → ${r.host}?`)) api("DELETE", `/rules/${i}`).catch(() => {}); } }, "Delete")),
+  )));
+}
+
+// ---- controls ------------------------------------------------------------
+for (const b of document.querySelectorAll(".modes button")) b.onclick = () => api("POST", "/mode", { mode: b.dataset.mode }).catch(() => {});
+for (const b of document.querySelectorAll(".tabs .tab")) b.onclick = () => {
+  tab = b.dataset.tab;
+  for (const x of document.querySelectorAll(".tabs .tab")) x.classList.toggle("on", x === b);
+  for (const t of ["conns", "incoming", "rules"]) $(t).classList.toggle("hidden", tab !== t);
+  $("conn-tools").classList.toggle("hidden", tab === "rules");
+  $("only-new-label").classList.toggle("hidden", tab !== "conns");
+};
+$("filter").oninput = () => { if (state) { renderConns(); renderIncoming(); } };
+$("only-new").onchange = () => state && renderConns();
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) || !state) return;
+  const p = state.pending[0];
+  const map = { a: [true, false], A: [true, true], d: [false, false], D: [false, true] };
+  if (p && map[e.key]) { e.preventDefault(); answer(p.id, ...map[e.key]); return; }
+  if (p && e.key === "s") { const order = Object.keys(scopeLabels); scopes[p.id] = order[(order.indexOf(scopes[p.id] || "hostport") + 1) % 3]; renderPrompts(); return; }
+  const modes = { 1: "alert", 2: "allow", 3: "block" };
+  if (modes[e.key]) api("POST", "/mode", { mode: modes[e.key] }).catch(() => {});
+});
+
+function updateNotifHint() {
+  const can = "Notification" in window;
+  $("notif-hint").classList.toggle("hidden", !can || Notification.permission !== "default");
+}
+$("notif-enable").onclick = async () => { unlockAudio(); await Notification.requestPermission(); updateNotifHint(); beep(); };
+$("alerts-btn").onclick = () => $("alert-settings").classList.toggle("hidden");
+for (const [id, key] of [["opt-notify", "notify"], ["opt-new", "newDest"], ["opt-sound", "sound"]]) {
+  $(id).checked = opts[key];
+  $(id).onchange = (e) => { opts[key] = e.target.checked; store.set(key, opts[key]); };
+}
+$("test-alert").onclick = async () => { unlockAudio();
+  if ("Notification" in window && Notification.permission === "default") await Notification.requestPermission();
+  updateNotifHint();
+  if ("Notification" in window && Notification.permission === "denied") alert("Notifications are blocked for this site in your browser settings.");
+  notify("tuisnitch test", "Alerts are working.", "test", false); beep();
+};
+// Browsers only allow audio after a user gesture.
+function unlockAudio() { if (!audio) try { audio = new AudioContext(); } catch {} }
+document.addEventListener("pointerdown", unlockAudio, { once: true });
+document.addEventListener("keydown", unlockAudio, { once: true });
+
+// ---- login ---------------------------------------------------------------
+function showLogin() { $("login").classList.remove("hidden"); $("token").focus(); }
+async function login(token) {
+  const r = await fetch("/api/login", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+  return r.ok;
+}
+$("login-form").onsubmit = async (e) => {
+  e.preventDefault();
+  if (await login($("token").value)) { $("login").classList.add("hidden"); $("login-err").classList.add("hidden"); connect(); }
+  else $("login-err").classList.remove("hidden");
+};
+
+(async function start() {
+  updateNotifHint();
+  const u = new URL(location.href), t = u.searchParams.get("token");
+  if (t) { u.searchParams.delete("token"); history.replaceState(null, "", u.pathname + u.search); await login(t); }
+  const r = await fetch("/api/state", { credentials: "same-origin" });
+  if (r.status === 401) { showLogin(); return; }
+  connect();
+})();
+</script>
+</body>
+</html>

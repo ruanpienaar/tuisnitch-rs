@@ -1,0 +1,23 @@
+[package]
+name = "tuisnitch"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.105"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio", "query"] }
+chrono = { version = "0.4.45", features = ["serde"] }
+crossterm = "0.29.0"
+futures-util = { version = "0.3.34", default-features = false }
+libc = "0.2.191"
+nfq = "0.2.6"
+ratatui = "0.30.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+signal-hook = "0.4.6"
+tokio = { version = "1.54.1", features = ["rt", "net", "time", "macros"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

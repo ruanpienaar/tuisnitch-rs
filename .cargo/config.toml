@@ -1,0 +1,5 @@
+# `cargo run-root -- <flags>` builds, then runs the binary under sudo.
+# (Plain `sudo cargo run` usually fails: root has no Rust toolchain, and it
+# would leave root-owned files in target/.)
+[alias]
+run-root = ["run", "--config", "target.'cfg(target_os = \"linux\")'.runner = \"sudo\""]
